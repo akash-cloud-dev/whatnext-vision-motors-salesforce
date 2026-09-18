@@ -63,7 +63,7 @@ The scheduler executes the vehicle order batch automatically according to the co
 - Scheduled Apex
 
 ## Project Demo
-Demo video: [Add YouTube Demo Link Here]
+Demo video: https://youtu.be/0i9xHPVRGzU?si=A2R9Z3FwK7smbdie
 
 ## Project Repository
 This repository contains documentation and Salesforce project implementation files for WhatNext Vision Motors.
