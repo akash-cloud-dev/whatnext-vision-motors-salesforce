@@ -1,87 +1,78 @@
-global class VehicleOrderBatch implements Database.Batchable<sObject> {
+global class VehicleOrderBatch implements Database.Batchable<SObject> {
 
-global Database.QueryLocator start (Database.BatchableContext bc) {
+    global Database.QueryLocator start(Database.BatchableContext bc) {
 
-return Database.getQueryLocator([
+        return Database.getQueryLocator([
+            SELECT Id, Status__c, Vehicle__c
+            FROM Vehicle_Order__c
+            WHERE Status__c = 'Pending'
+        ]);
+    }
+    global void execute(
+        Database.BatchableContext bc,
+        List<Vehicle_Order__c> orderList
+    ) {
 
-SELECT Id, Status_c, Vehicle___c
+        Set<Id> vehicleIds = new Set<Id>();
 
-FROM Vehicle_Order___c
+        for (Vehicle_Order__c order : orderList) {
 
-WHERE Status__c
+            if (order.Vehicle__c != null) {
+                vehicleIds.add(order.Vehicle__c);
+            }
+        }
 
-'Pending'
+        if (!vehicleIds.isEmpty()) {
 
-]);
+            Map<Id, Vehicle__c> vehicleStockMap =
+                new Map<Id, Vehicle__c>();
 
-}
+            for (Vehicle__c vehicle : [
+                SELECT Id, Stock_Quantity__c
+                FROM Vehicle__c
+                WHERE Id IN :vehicleIds
+            ]) {
 
-global void execute(Database.BatchableContext bc, List<Vehicle_Order_c> orderList) {
+                vehicleStockMap.put(vehicle.Id, vehicle);
+            }
 
-Set<Id> vehicleIds = new Set<Id>();
+            List<Vehicle_Order__c> ordersToUpdate =
+                new List<Vehicle_Order__c>();
 
-for (Vehicle_Order_c order orderList) {
+            List<Vehicle__c> vehiclesToUpdate =
+                new List<Vehicle__c>();
 
-if (order.Vehicle_c != null) {
+            for (Vehicle_Order__c order : orderList) {
 
-vehicleIds.add(order.Vehicle__c);
+                if (vehicleStockMap.containsKey(order.Vehicle__c)) {
 
-}
+                    Vehicle__c vehicle =
+                        vehicleStockMap.get(order.Vehicle__c);
 
-}
+                    if (vehicle.Stock_Quantity__c > 0) {
 
-if (!vehicleIds.isEmpty()) {
+                        order.Status__c = 'Confirmed';
 
-Map<Id, Vehicle___c> vehicleStockMap = new Map<Id, Vehicle___c>();
+                        vehicle.Stock_Quantity__c -= 1;
 
-for (Vehicle_c vehicle: [SELECT Id, Stock Quantity_c FROM Vehicle_c WHERE Id IN vehicleIds]) {
+                        ordersToUpdate.add(order);
+                        vehiclesToUpdate.add(vehicle);
+                    }
+                }
+            }
 
-vehicleStockMap.put(vehicle. Id, vehicle);
+            if (!ordersToUpdate.isEmpty()) {
+                update ordersToUpdate;
+            }
 
-}
+            if (!vehiclesToUpdate.isEmpty()) {
+                update vehiclesToUpdate;
+            }
+        }
+    }
 
-List<Vehicle_Order_c> ordersToUpdate = new List<Vehicle_Order_c>(); List<Vehicle__c> vehiclesToUpdate = new List<Vehicle__c>();
+    global void finish(Database.BatchableContext bc) {
 
-for (Vehicle_Order_c order orderList) {
-
-if (vehicleStockMap.containsKey(order. Vehicle__c)) {
-
-Vehicle_c vehicle = vehicleStockMap.get(order. Vehicle__c);
-
-if (vehicle.Stock_Quantity___c > 0) {
-
-order.Status___c = 'Confirmed';
-
-vehicle.Stock_Quantity___c -= 1;
-
-ordersToUpdate.add(order);
-
-vehiclesToUpdate.add(vehicle);
-
-}
-
-}
-
-}
-
-if (!ordersToUpdate.isEmpty()) {
-
-update ordersToUpdate;
-
-}
-
-if (!vehicles ToUpdate.isEmpty()) {
-
-update vehiclesToUpdate;
-
-}
-
-}
-
-global void finish(Database.BatchableContext bc) {
-
-System.debug('Vehicle order batch job completed.');
-
-}
-
+        System.debug('Vehicle order batch job completed.');
+    }
 }
